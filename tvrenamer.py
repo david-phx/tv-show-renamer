@@ -32,7 +32,7 @@ class GUI:
 
         # Root window settings
         self.root.title(app_title)
-        self.root.iconbitmap(default="icon.ico")
+        self.root.iconbitmap(default="assets/icon.ico")
         self.root.geometry("1280x720")
         self.root.minsize(800, 600)
 
@@ -180,7 +180,7 @@ class GUI:
         about.grab_set()
         about.focus_set()
 
-        logo_image = tk.PhotoImage(file="tvrenamer.png")
+        logo_image = tk.PhotoImage(file="assets/tvrenamer.png")
         logo = ttk.Label(about, image=logo_image, padding=20)
         logo.image = logo_image
         logo.grid(column=0, row=0)
@@ -238,7 +238,7 @@ class GUI:
                         result["name"],
                         result["year"] or "?",
                         result["country"] or "Unknown",
-                        result["overview"][0:50],
+                        result["overview"][0:100],
                     ),
                 )
 
