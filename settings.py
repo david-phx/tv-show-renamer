@@ -1,13 +1,10 @@
-import configparser
+from configparser import ConfigParser
 
 
-class Settings(configparser.ConfigParser):
+class Settings(ConfigParser):
     def __init__(self):
         super().__init__()
         self.settings_file = "settings.ini"
-        self.parse()
-
-    def parse(self):
         self.read(self.settings_file)
 
         # If settings file is empty, create a new one
