@@ -5,8 +5,10 @@ import webbrowser
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import scrolledtext
+
 from tmdb import TVShow, TVShows
 
+from settings import Settings
 
 # TODO: Add validations and warnings everywhere
 
@@ -18,9 +20,9 @@ app_link = "https://github.com/david-phx/tv-renamer"
 app_author = "David Asatrian"
 
 
-class GUI:
+class GUI(tk.Tk):
     def __init__(self):
-        self.root = tk.Tk()
+        super().__init__()
 
         # Control variables
         self.folder = tk.StringVar()
@@ -29,24 +31,30 @@ class GUI:
         self.show_tmdb_id = tk.IntVar()
         self.files = list()
         self.renamed_files = dict()
+        self.tmdb_api_key = tk.StringVar()
+
+        # Parse settings
+        self.settings = Settings()
+        self.tmdb_api_key.set(self.settings["TMDB"]["api_key"])
 
         # Root window settings
-        self.root.title(app_title)
-        self.root.iconbitmap(default="assets/icon.ico")
-        self.root.geometry("1280x720")
-        self.root.minsize(800, 600)
+        self.title(app_title)
+        self.iconbitmap(default="assets/icon.ico")
+        self.geometry("1280x720")
+        self.minsize(800, 600)
 
         # The only column and the second row are stretchy
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
 
         # Menu bar
-        self.menu_bar = tk.Menu(self.root)
+        self.menu_bar = tk.Menu(self)
 
         self.file_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.file_menu.add_command(label="Open Folder...", command=self.select_folder)
+        self.file_menu.add_command(label="Settings...", command=self.settings_window)
         self.file_menu.add_separator()
-        self.file_menu.add_command(label="Exit", command=self.root.destroy)
+        self.file_menu.add_command(label="Exit", command=self.destroy)
 
         self.help_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.help_menu.add_command(label="Help", command=None)
@@ -55,10 +63,10 @@ class GUI:
 
         self.menu_bar.add_cascade(label="File", menu=self.file_menu)
         self.menu_bar.add_cascade(label="Help", menu=self.help_menu)
-        self.root.config(menu=self.menu_bar)
+        self.config(menu=self.menu_bar)
 
         # Folder and show selection frame
-        self.folder_frame = ttk.Frame(self.root, padding=10)
+        self.folder_frame = ttk.Frame(self, padding=10)
         self.folder_frame.grid(column=0, row=0, sticky="WE")
         self.folder_frame.columnconfigure(1, weight=1)
 
@@ -125,7 +133,7 @@ class GUI:
         self.generate_filenames.grid(column=7, row=1, padx=5, pady=5)
 
         # File panels frame
-        self.panels_frame = ttk.Frame(self.root, padding=(10, 0))
+        self.panels_frame = ttk.Frame(self, padding=(10, 0))
         self.panels_frame.grid(column=0, row=1, sticky="NSWE")
         self.panels_frame.columnconfigure(0, weight=1)
         self.panels_frame.columnconfigure(1, weight=1)
@@ -152,7 +160,7 @@ class GUI:
         self.new_names.grid(padx=10, pady=10, sticky="NSWE")
 
         # Rename button frame
-        self.rename_frame = ttk.Frame(self.root)
+        self.rename_frame = ttk.Frame(self)
         self.rename_frame.grid(column=0, row=2, sticky="WE")
         self.rename_frame.columnconfigure(0, weight=1)
 
@@ -165,16 +173,59 @@ class GUI:
         )
         self.rename_button.grid(column=0, row=0, pady=20)
 
-        self.root.mainloop()
+        # self.mainloop()
+
+    def settings_window(self):
+        def save_settings():
+            self.settings["TMDB"]["api_key"] = self.tmdb_api_key.get()
+            self.settings.save()
+            settings.destroy()
+
+        settings = tk.Toplevel(self)
+        settings.transient(self)
+        settings.resizable(False, False)
+        settings.title("Settings")
+        settings.geometry("400x120")
+        x = self.winfo_x() + self.winfo_width() / 2 - 200
+        y = self.winfo_y() + self.winfo_height() / 2 - 60
+        settings.geometry("+%d+%d" % (x, y))
+        settings.grab_set()
+        settings.focus_set()
+
+        settings.columnconfigure(0, weight=1)
+
+        tmdb_frame = ttk.LabelFrame(settings, text="The Movie Database", padding=5)
+        tmdb_frame.grid(column=0, row=0, padx=10, pady=6, sticky="WE")
+        tmdb_frame.columnconfigure(1, weight=1)
+
+        tmdb_api_key_label = ttk.Label(tmdb_frame, text="API Key")
+        tmdb_api_key_label.grid(column=0, row=0, padx=5, pady=5, sticky="E")
+
+        tmdb_api_key_entry = ttk.Entry(
+            tmdb_frame, textvariable=self.tmdb_api_key, font=("Segoe UI", 10)
+        )
+        tmdb_api_key_entry.grid(column=1, row=0, padx=5, pady=5, sticky="WE")
+
+        buttons_frame = tk.Frame(settings, padx=10, pady=5)
+        buttons_frame.grid(column=0, row=1, sticky="WE")
+        buttons_frame.columnconfigure(0, weight=1)
+
+        ttk.Button(buttons_frame, text="OK", command=save_settings).grid(
+            column=0, row=0, padx=10, sticky="E"
+        )
+
+        ttk.Button(buttons_frame, text="Cancel", command=settings.destroy).grid(
+            column=1, row=0, sticky="E"
+        )
 
     def about_window(self):
-        about = tk.Toplevel(self.root)
-        about.transient(self.root)
+        about = tk.Toplevel(self)
+        about.transient(self)
         about.resizable(False, False)
         about.title("About")
         about.geometry("500x500")
-        x = self.root.winfo_x() + self.root.winfo_width() / 2 - 250
-        y = self.root.winfo_y() + self.root.winfo_height() / 2 - 250
+        x = self.winfo_x() + self.winfo_width() / 2 - 250
+        y = self.winfo_y() + self.winfo_height() / 2 - 250
         about.geometry("+%d+%d" % (x, y))
         about.columnconfigure(0, weight=1)
         about.grab_set()
@@ -207,12 +258,12 @@ class GUI:
         )
 
     def lookup_window(self):
-        lookup = tk.Toplevel(self.root)
-        lookup.transient(self.root)
+        lookup = tk.Toplevel(self)
+        lookup.transient(self)
         lookup.title("Look up TV Show on TMDB")
         lookup.geometry("800x600")
-        x = self.root.winfo_x() + self.root.winfo_width() / 2 - 400
-        y = self.root.winfo_y() + self.root.winfo_height() / 2 - 300
+        x = self.winfo_x() + self.winfo_width() / 2 - 400
+        y = self.winfo_y() + self.winfo_height() / 2 - 300
         lookup.geometry("+%d+%d" % (x, y))
         lookup.grab_set()
         lookup.focus_set()
@@ -378,6 +429,3 @@ class GUI:
                 os.rename(from_name, to_name)
 
         self.read_folder()
-
-
-gui = GUI()

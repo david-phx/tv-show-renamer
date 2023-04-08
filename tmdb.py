@@ -1,11 +1,14 @@
 import tmdbsimple as tmdb
 
-
-tmdb.API_KEY = ""  # Get your own key please
+from settings import Settings
 
 
 class TVShows:
     def __init__(self):
+        # Get API key from settings
+        self.settings = Settings()
+        tmdb.API_KEY = self.settings["TMDB"]["api_key"]
+
         self.results = list()
 
     def search(self, query):
@@ -28,6 +31,10 @@ class TVShows:
 
 class TVShow:
     def __init__(self, tmdb_id):
+        # Get API key from settings
+        self.settings = Settings()
+        tmdb.API_KEY = self.settings["TMDB"]["api_key"]
+        
         self.tmdb_id = tmdb_id
         self.name = ""
         self.season_list = set()
@@ -80,7 +87,6 @@ class TVShow:
         return self.slugify(title)
 
     def slugify(self, string):
-
         illegal_chars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"]
 
         for char in illegal_chars:

@@ -1,0 +1,20 @@
+import configparser
+
+
+class Settings(configparser.ConfigParser):
+    def __init__(self):
+        super().__init__()
+        self.settings_file = "settings.ini"
+        self.parse()
+
+    def parse(self):
+        self.read(self.settings_file)
+
+        # If settings file is empty, create a new one
+        if "TMDB" not in self:
+            self["TMDB"] = {"api_key": ""}
+            self.save()
+
+    def save(self):
+        with open(self.settings_file, "w") as settings_file:
+            self.write(settings_file)
