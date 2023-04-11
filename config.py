@@ -1,5 +1,5 @@
 app_title = "TV Show Renamer"
-app_version = "0.2"
+app_version = "0.2.0"
 app_year = "2023"
-app_link = "https://github.com/david-phx/tv-renamer"
+app_link = "https://github.com/david-phx/tv-show-renamer"
 app_author = "David Asatrian"

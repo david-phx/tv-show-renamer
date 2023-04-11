@@ -238,7 +238,7 @@ class GUI(tk.Tk):
         about.columnconfigure(0, weight=1)
 
         # App logo
-        logo_image = tk.PhotoImage(file="assets/tvrenamer.png")
+        logo_image = tk.PhotoImage(file="assets/logo.png")
         logo = ttk.Label(about, image=logo_image, padding=20)
         # Keep image reference to prevent it from being garbage collected
         logo.image = logo_image
