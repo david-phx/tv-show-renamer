@@ -7,7 +7,7 @@ class Settings(ConfigParser):
         self.settings_file = "settings.ini"
         self.read(self.settings_file)
 
-        # If settings file is empty, create a new one
+        # If no settings file, create one
         if "TMDB" not in self:
             self["TMDB"] = {"api_key": ""}
             self.save()

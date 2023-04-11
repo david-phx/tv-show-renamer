@@ -1,28 +1,26 @@
 import os
 import re
 import tkinter as tk
+import tkinter.font as tkFont
 import webbrowser
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import scrolledtext
 
+import config
+from settings import Settings
 from tmdb import TVShow, TVShows
 
-from settings import Settings
 
 # TODO: Add validations and warnings everywhere
-
-# Global variables
-app_title = "TV Show Renamer"
-app_version = "0.1"
-app_year = "2023"
-app_link = "https://github.com/david-phx/tv-renamer"
-app_author = "David Asatrian"
 
 
 class GUI(tk.Tk):
     def __init__(self):
         super().__init__()
+
+        # Get settings
+        self.settings = Settings()
 
         # Control variables
         self.folder = tk.StringVar()
@@ -31,14 +29,9 @@ class GUI(tk.Tk):
         self.show_tmdb_id = tk.IntVar()
         self.files = list()
         self.renamed_files = dict()
-        self.tmdb_api_key = tk.StringVar()
-
-        # Parse settings
-        self.settings = Settings()
-        self.tmdb_api_key.set(self.settings["TMDB"]["api_key"])
 
         # Root window settings
-        self.title(app_title)
+        self.title(config.app_title)
         self.iconbitmap(default="assets/icon.ico")
         self.geometry("1280x720")
         self.minsize(800, 600)
@@ -173,89 +166,115 @@ class GUI(tk.Tk):
         )
         self.rename_button.grid(column=0, row=0, pady=20)
 
-        # self.mainloop()
-
     def settings_window(self):
+        # Settings control variable(s)
+        tmdb_api_key = tk.StringVar(value=self.settings["TMDB"]["api_key"])
+
+        # Save and close function
         def save_settings():
-            self.settings["TMDB"]["api_key"] = self.tmdb_api_key.get()
+            self.settings["TMDB"]["api_key"] = tmdb_api_key.get()
             self.settings.save()
             settings.destroy()
 
+        # Toplevel Settings window
         settings = tk.Toplevel(self)
-        settings.transient(self)
-        settings.resizable(False, False)
         settings.title("Settings")
         settings.geometry("400x120")
+        settings.resizable(False, False)
         x = self.winfo_x() + self.winfo_width() / 2 - 200
         y = self.winfo_y() + self.winfo_height() / 2 - 60
         settings.geometry("+%d+%d" % (x, y))
+        settings.transient(self)
         settings.grab_set()
         settings.focus_set()
 
+        # Full width single column
         settings.columnconfigure(0, weight=1)
 
+        # Full width TMDB settings LabelFrame
         tmdb_frame = ttk.LabelFrame(settings, text="The Movie Database", padding=5)
-        tmdb_frame.grid(column=0, row=0, padx=10, pady=6, sticky="WE")
+        tmdb_frame.grid(column=0, row=0, padx=10, pady=7, sticky="WE")
         tmdb_frame.columnconfigure(1, weight=1)
 
-        tmdb_api_key_label = ttk.Label(tmdb_frame, text="API Key")
-        tmdb_api_key_label.grid(column=0, row=0, padx=5, pady=5, sticky="E")
+        # TMDB API key Label
+        tmdb_api_key_label = ttk.Label(tmdb_frame, text="API Key:")
+        tmdb_api_key_label.grid(column=0, row=0, padx=5, pady=5)
 
+        # TMDB API key Entry field
         tmdb_api_key_entry = ttk.Entry(
-            tmdb_frame, textvariable=self.tmdb_api_key, font=("Segoe UI", 10)
+            tmdb_frame, textvariable=tmdb_api_key, font=tkFont.Font(size=10)
         )
         tmdb_api_key_entry.grid(column=1, row=0, padx=5, pady=5, sticky="WE")
 
+        # Full width buttons Frame
         buttons_frame = tk.Frame(settings, padx=10, pady=5)
         buttons_frame.grid(column=0, row=1, sticky="WE")
         buttons_frame.columnconfigure(0, weight=1)
 
-        ttk.Button(buttons_frame, text="OK", command=save_settings).grid(
-            column=0, row=0, padx=10, sticky="E"
-        )
+        # OK button
+        ok_button = ttk.Button(buttons_frame, text="OK", command=save_settings)
+        ok_button.grid(column=0, row=0, padx=10, sticky="E")
 
-        ttk.Button(buttons_frame, text="Cancel", command=settings.destroy).grid(
-            column=1, row=0, sticky="E"
+        # Cancel button
+        cancel_button = ttk.Button(
+            buttons_frame, text="Cancel", command=settings.destroy
         )
+        cancel_button.grid(column=1, row=0, sticky="E")
 
     def about_window(self):
+        # Toplevel About window
         about = tk.Toplevel(self)
-        about.transient(self)
-        about.resizable(False, False)
         about.title("About")
         about.geometry("500x500")
+        about.resizable(False, False)
         x = self.winfo_x() + self.winfo_width() / 2 - 250
         y = self.winfo_y() + self.winfo_height() / 2 - 250
         about.geometry("+%d+%d" % (x, y))
-        about.columnconfigure(0, weight=1)
+        about.transient(self)
         about.grab_set()
         about.focus_set()
 
+        # Full width single column
+        about.columnconfigure(0, weight=1)
+
+        # App logo
         logo_image = tk.PhotoImage(file="assets/tvrenamer.png")
         logo = ttk.Label(about, image=logo_image, padding=20)
+        # Keep image reference to prevent it from being garbage collected
         logo.image = logo_image
         logo.grid(column=0, row=0)
 
-        ttk.Label(
+        # App name and version label
+        app_label = ttk.Label(
             about,
-            text=app_title + " v" + app_version,
-            font=("Segoe UI", 10, "bold"),
+            text=f"{config.app_title} {config.app_version}",
+            font=tkFont.Font(size=12, weight="bold"),
             padding=10,
-        ).grid(column=0, row=1)
-        ttk.Label(about, text="© " + app_year + " " + app_author).grid(column=0, row=2)
-        link = ttk.Label(
+        )
+        app_label.grid(column=0, row=1)
+
+        # Author and copyright label
+        autor_label = ttk.Label(
             about,
-            text=app_link,
+            text=f"© {config.app_year} {config.app_author}",
+            font=tkFont.Font(size=10),
+        )
+        autor_label.grid(column=0, row=2)
+
+        # Link label
+        link_label = ttk.Label(
+            about,
+            text=config.app_link[8:],  # Remove https://
             foreground="blue",
-            font=("Segoe UI", 9, "underline"),
+            font=tkFont.Font(size=9, underline=1),
             cursor="hand2",
         )
-        link.grid(column=0, row=3)
-        link.bind("<Button-1>", lambda event: webbrowser.open(link.cget("text")))
+        link_label.grid(column=0, row=3)
+        link_label.bind("<Button-1>", lambda event: webbrowser.open(config.app_link))
 
-        ttk.Button(about, text="OK", command=about.destroy).grid(
-            column=0, row=5, pady=20
-        )
+        # OK button
+        ok_button = ttk.Button(about, text="OK", command=about.destroy)
+        ok_button.grid(column=0, row=5, pady=20)
 
     def lookup_window(self):
         lookup = tk.Toplevel(self)
@@ -334,6 +353,7 @@ class GUI(tk.Tk):
 
         refresh()
 
+    # TODO: Deal with cancel/empty folder value
     def select_folder(self):
         folder = filedialog.askdirectory()
         self.folder.set(folder)
