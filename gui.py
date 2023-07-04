@@ -1,16 +1,13 @@
 import os
-import re
 import tkinter as tk
 import tkinter.font as tkFont
 import webbrowser
-from tkinter import ttk
-from tkinter import filedialog
-from tkinter import scrolledtext
+from tkinter import filedialog, scrolledtext, ttk
 
 import config
 from settings import Settings
-from tmdb import TVShow, TVShows
-
+from tmdb import TVShow
+from utils import *
 
 # TODO: Add validations and warnings everywhere
 
@@ -19,22 +16,31 @@ class GUI(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        # Get settings
+        # App settings
         self.settings = Settings()
 
-        # Control variables
+        # TMDB API instance
+        self.tv_show = TVShow()
+
+        # Control variables for widgets
         self.folder = tk.StringVar()
         self.show_name = tk.StringVar()
         self.show_year = tk.IntVar()
         self.show_tmdb_id = tk.IntVar()
+
+        # Files list and new filenames dictionary
         self.files = list()
-        self.renamed_files = dict()
+        self.new_filenames = dict()
 
         # Root window settings
         self.title(config.app_title)
         self.iconbitmap(default="assets/icon.ico")
         self.geometry("1280x720")
         self.minsize(800, 600)
+
+        self.default_font = tkFont.nametofont("TkTextFont")
+        self.other_font = tkFont.Font(family="Helvetica", size="12")
+        # print(self.default_font.actual())
 
         # The only column and the second row are stretchy
         self.columnconfigure(0, weight=1)
@@ -121,7 +127,7 @@ class GUI(tk.Tk):
             self.folder_frame,
             text="Generate Filenames",
             width=25,
-            command=self.generate_new_names,
+            command=self.generate_new_filenames,
         )
         self.generate_filenames.grid(column=7, row=1, padx=5, pady=5)
 
@@ -295,11 +301,10 @@ class GUI(tk.Tk):
         show_list = list()
 
         def refresh():
-            tv_shows = TVShows()
-            tv_shows.search(show_name.get())
-            shows.delete(0, tk.END)
             show_list.clear()
-            show_list.extend(tv_shows.results)
+            show_list.extend(self.tv_show.search(show_name.get()))
+
+            shows.delete(0, tk.END)
 
             for index, result in enumerate(show_list):
                 shows.insert(
@@ -353,11 +358,13 @@ class GUI(tk.Tk):
 
         refresh()
 
-    # TODO: Deal with cancel/empty folder value
     def select_folder(self):
         folder = filedialog.askdirectory()
         self.folder.set(folder)
-        self.read_folder()
+        try:
+            self.read_folder()
+        except FileNotFoundError:
+            pass
 
     def read_folder(self):
         folder_path = self.folder.get()
@@ -370,7 +377,7 @@ class GUI(tk.Tk):
         self.files.clear()
 
         for file in folder:
-            if self.is_a_show_file(file):
+            if is_valid_file(file):
                 self.files.append(file)
                 file_list += file + "\n"
 
@@ -379,73 +386,77 @@ class GUI(tk.Tk):
         self.file_names.insert(tk.END, file_list[:-1])  # Skip the last \n
         self.file_names.configure(state="disabled")
 
-        self.show_name.set(
-            self.guess_the_show(self.files[0])
-        )  # TODO: Validate, can return None
+        possible_show_name = guess_the_show(self.files[0])
 
-        tv_shows = TVShows()
-        tv_shows.search(self.show_name.get())
+        if possible_show_name:
+            self.show_name.set(possible_show_name)
+            possible_show = self.tv_show.search(self.show_name.get())[0]
 
-        self.show_name.set(tv_shows.results[0]["name"])
-        self.show_year.set(tv_shows.results[0]["year"])
-        self.show_tmdb_id.set(tv_shows.results[0]["id"])
+            if possible_show:
+                self.show_name.set(possible_show["name"])
+                self.show_year.set(possible_show["year"])
+                self.show_tmdb_id.set(possible_show["id"])
 
-        self.generate_new_names()
+                self.generate_new_filenames()
 
-    # True if filename contains season and episode numbers
-    def is_a_show_file(self, filename):
-        if re.search("s\d{1,2}e\d{1,2}", filename, re.IGNORECASE) != None:
-            return True
-        return False
+    # Generate new filenames
+    def generate_new_filenames(self):
+        # Get TV Show info
+        self.tv_show.get_info(self.show_tmdb_id.get())
 
-    # Alphanumeric characters and spaces from start of the filname to s01e01, etc.
-    def guess_the_show(self, filename):
-        pattern = "^[a-z0-9\s]+?(?=[^a-z0-9]*s\d{1,2}e\d{1,2})"
-        match = re.search(pattern, filename, re.IGNORECASE)
-        try:
-            return match.group()
-        except:
-            return None
+        # Clear new filenames dictinoary
+        self.new_filenames.clear()
 
-    # TODO: CHANGE !!!
-    def generate_new_names(self):
-        tv_show = TVShow(self.show_tmdb_id.get())  # TODO: VALIDATE!!!!
-        tv_show.get_info()
+        # Set of seasons to get info for
+        seasons = set()
 
-        renamed_file_list = ""
-        self.renamed_files.clear()
-
+        # Generate new filenames
         for file in self.files:
-            if self.is_a_show_file(file):
-                (filename, extension) = os.path.splitext(file)
+            if is_valid_file(file):
+                filename, extension = os.path.splitext(file)
+                season, episode, second_episode = parse_filename(filename)
 
-                (start, end) = re.search("s\d{1,2}", filename, re.IGNORECASE).span()
-                season = int(int(filename[int(start) + 1 : int(end)]))
+                # Try to get episode list at least once
+                if season not in seasons:
+                    seasons.add(season)
+                    if self.tv_show.has_season(season):
+                        self.tv_show.get_season_info(season)
 
-                (start, end) = re.search("e\d{1,2}", filename, re.IGNORECASE).span()
-                episode = int(int(filename[int(start) + 1 : int(end)]))
+                self.new_filenames[file] = (
+                    generate_filename(
+                        self.tv_show.name,
+                        season,
+                        episode,
+                        second_episode,
+                        self.tv_show.get_episode_name(season, episode),
+                    )
+                    + extension
+                )
 
-                new_file = tv_show.filename(season, episode) + extension
+        # Update new filenames frame
+        self.update_new_names_frame()
 
-                self.renamed_files[file] = new_file
-
-                renamed_file_list += new_file + "\n"
-
+    # Update new names frame contents and enable rename button
+    def update_new_names_frame(self):
+        new_filenames_list = ""
+        for filename in self.new_filenames.values():
+            new_filenames_list += filename + "\n"
         self.new_names.configure(state="normal")
         self.new_names.delete(1.0, tk.END)
-        self.new_names.insert(tk.END, renamed_file_list[:-1])  # Skip the last \n
+        self.new_names.insert(tk.END, new_filenames_list[:-1])  # Ignore the last \n
         self.new_names.configure(state="disabled")
-
         self.rename_button.configure(state="normal")
 
+    # Rename files and re-read folder (& update files frame)
     def rename_files(self):
         folder_path = self.folder.get()
         folder = os.listdir(folder_path)
 
         for file in folder:
-            if self.is_a_show_file(file) and file in self.renamed_files:
-                from_name = os.path.join(folder_path, file)
-                to_name = os.path.join(folder_path, self.renamed_files[file])
-                os.rename(from_name, to_name)
+            if is_valid_file(file) and file in self.new_filenames:
+                os.rename(
+                    os.path.join(folder_path, file),
+                    os.path.join(folder_path, self.new_filenames[file]),
+                )
 
         self.read_folder()

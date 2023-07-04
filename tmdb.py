@@ -3,19 +3,25 @@ import tmdbsimple as tmdb
 from settings import Settings
 
 
-class TVShows:
+class TVShow:
+    """Retrieve and store TV show information from TMDB."""
+
     def __init__(self):
-        # Get API key from settings
+        """Initialize TVShow object."""
         self.settings = Settings()
         tmdb.API_KEY = self.settings["TMDB"]["api_key"]
 
-        self.results = list()
+        self.name = None
+        self.tmdb_id = None
+        self.season_list = set()
+        self.episodes = dict()
 
     def search(self, query):
+        """Search for TV shows matching query and return formatted list."""
         search = tmdb.Search()
         search.tv(query=query)
 
-        self.results.clear()
+        show_list = list()
 
         for result in search.results:
             show = dict()
@@ -26,70 +32,47 @@ class TVShows:
             show["year"] = result["first_air_date"].split("-")[0]
             show["id"] = result["id"]
             show["overview"] = result["overview"]
-            self.results.append(show)
+            show_list.append(show)
 
+        return show_list
 
-class TVShow:
-    def __init__(self, tmdb_id):
-        # Get API key from settings
-        self.settings = Settings()
-        tmdb.API_KEY = self.settings["TMDB"]["api_key"]
-        
-        self.tmdb_id = tmdb_id
-        self.name = ""
-        self.season_list = set()
-        self.seasons = dict()
-
-    def lookup_shows(self, name):
-        shows = []
-
-    def get_info(self):
-        show = tmdb.TV(self.tmdb_id)
-        response = show.info()
+    def get_info(self, tmdb_id):
+        """Get TV show name and season list by TMDB ID."""
+        show = tmdb.TV(tmdb_id)
+        show.info()
 
         self.name = show.name
+        self.tmdb_id = tmdb_id
+
+        self.season_list.clear()
+        self.episodes.clear()
 
         for season in show.seasons:
             self.season_list.add(season["season_number"])
 
+    def has_season(self, season_number):
+        """Return True if season exists."""
+        return season_number in self.season_list
+
     def get_season_info(self, season_number):
-        if season_number in self.season_list:
-            season = tmdb.TV_Seasons(self.tmdb_id, season_number)
-            response = season.info()
+        """Get TV show season info."""
 
-            episodes = dict()
-
-            for episode in season.episodes:
-                episodes[episode["episode_number"]] = episode["name"]
-
-            self.seasons[season_number] = episodes
-
-    def filename(self, season_number, episode_number):
-        # Season doesn't exist
-        if season_number not in self.season_list:
+        if not self.has_season(season_number):
             return None
 
-        # Season exists, but we don't have the data for the season
-        if season_number not in self.seasons:
-            self.get_season_info(season_number)
+        season = tmdb.TV_Seasons(self.tmdb_id, season_number)
+        season.info()
 
-        # Episode doesn't exist
-        if episode_number not in self.seasons[season_number]:
-            return None
+        episodes = dict()
 
-        title = "{} - S{:02d}E{:02d} - {}".format(
-            self.name,
-            season_number,
-            episode_number,
-            self.seasons[season_number][episode_number],
-        )
+        for episode in season.episodes:
+            episodes[episode["episode_number"]] = episode["name"]
 
-        return self.slugify(title)
+        self.episodes[season_number] = episodes
 
-    def slugify(self, string):
-        illegal_chars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"]
-
-        for char in illegal_chars:
-            string = string.replace(char, "")
-
-        return string
+    def get_episode_name(self, season, episode):
+        """Return episode name."""
+        try:
+            return self.episodes[season][episode]
+        except KeyError:
+            return ""
