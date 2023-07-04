@@ -4,7 +4,7 @@ import tkinter.font as tkFont
 import webbrowser
 from tkinter import filedialog, scrolledtext, ttk
 
-import config
+from _build import BUILD_DATETIME
 from settings import Settings
 from tmdb import TVShow
 from utils import *
@@ -15,6 +15,8 @@ from utils import *
 class GUI(tk.Tk):
     def __init__(self):
         super().__init__()
+
+        self.basedir = os.path.dirname(__file__)
 
         # App settings
         self.settings = Settings()
@@ -33,8 +35,8 @@ class GUI(tk.Tk):
         self.new_filenames = dict()
 
         # Root window settings
-        self.title(config.app_title)
-        self.iconbitmap(default="assets/icon.ico")
+        self.title("TV Show Renamer")
+        self.iconbitmap(default=os.path.join(self.basedir, "assets", "icon.ico"))
         self.geometry("1280x720")
         self.minsize(800, 600)
 
@@ -244,39 +246,49 @@ class GUI(tk.Tk):
         about.columnconfigure(0, weight=1)
 
         # App logo
-        logo_image = tk.PhotoImage(file="assets/logo.png")
-        logo = ttk.Label(about, image=logo_image, padding=20)
+        logo_image = tk.PhotoImage(file=os.path.join(self.basedir, "assets", "logo.png"))
+        logo = ttk.Label(about, image=logo_image, padding=10)
         # Keep image reference to prevent it from being garbage collected
         logo.image = logo_image
         logo.grid(column=0, row=0)
 
-        # App name and version label
+        # App name label
         app_label = ttk.Label(
             about,
-            text=f"{config.app_title} {config.app_version}",
+            text=f"TV Show Renamer",
             font=tkFont.Font(size=12, weight="bold"),
             padding=10,
         )
         app_label.grid(column=0, row=1)
 
+        # Build label
+        build_label = ttk.Label(
+            about,
+            text=f"Build: {BUILD_DATETIME}",
+            font=tkFont.Font(size=10),
+            padding=0,
+        )
+        build_label.grid(column=0, row=2)
+
         # Author and copyright label
         autor_label = ttk.Label(
             about,
-            text=f"© {config.app_year} {config.app_author}",
+            text=f"© 2023 David Asatrian",
             font=tkFont.Font(size=10),
+            padding=5,
         )
-        autor_label.grid(column=0, row=2)
+        autor_label.grid(column=0, row=3)
 
         # Link label
         link_label = ttk.Label(
             about,
-            text=config.app_link[8:],  # Remove https://
+            text="github.com/david-phx/tv-show-renamer",
             foreground="blue",
             font=tkFont.Font(size=9, underline=1),
             cursor="hand2",
         )
-        link_label.grid(column=0, row=3)
-        link_label.bind("<Button-1>", lambda event: webbrowser.open(config.app_link))
+        link_label.grid(column=0, row=4)
+        link_label.bind("<Button-1>", lambda event: webbrowser.open("https://github.com/david-phx/tv-show-renamer"))
 
         # OK button
         ok_button = ttk.Button(about, text="OK", command=about.destroy)
