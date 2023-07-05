@@ -13,7 +13,7 @@ def generate_filename(show_name, season, episode, second_episode, episode_name):
 # Return alphanumeric characters and spaces from start of the filname to sXXeXX
 def guess_the_show(filename):
     filename = filename.replace("_", " ").replace(".", " ")
-    pattern = "^[a-z0-9\s]+?(?=[^a-z0-9]*s\d{1,2}e\d{1,2})"
+    pattern = "^[a-z0-9\s]+?(?=[^a-z0-9]*s\d{1,2}[-._ ]?e\d{1,2})"
     match = re.search(pattern, filename, re.IGNORECASE)
     try:
         return match.group()
@@ -29,7 +29,7 @@ def is_dual_episode(filename):
 
 # Return true if filename contains season & episode numbers in sXXeXX pattern
 def is_valid_file(filename):
-    return re.search("s\d{1,2}e\d{1,2}", filename, re.IGNORECASE) is not None
+    return re.search("s\d{1,2}[-._ ]?e\d{1,2}", filename, re.IGNORECASE) is not None
 
 
 # Extract season & episode numbers
